@@ -27,6 +27,7 @@ data/raw/*.md
 data/raw/*.pdf
 data/processed/*.jsonl
 results/raw/*.csv
+results/raw/*.bak
 results/processed/*.csv
 results/figures/*.png
 results/figures/*.html
