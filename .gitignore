@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Environment & secrets
+.env
+*.env
+
+# Data & results (large files)
+data/raw/*.txt
+data/raw/*.md
+data/raw/*.pdf
+data/processed/*.jsonl
+results/raw/*.csv
+results/processed/*.csv
+results/figures/*.png
+results/figures/*.html
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
