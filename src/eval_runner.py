@@ -13,6 +13,7 @@
 import json
 import os
 import time
+from collections import Counter
 from pathlib import Path
 
 import pandas as pd
@@ -150,10 +151,10 @@ def run_eval(
     # 断点续跑：加载已有结果
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     out_path = Path(output_dir) / "raw_results.csv"
-    existing_keys = set()
+    existing_counts = Counter()
     if resume and out_path.exists():
         existing_df = pd.read_csv(out_path)
-        existing_keys = set(zip(
+        existing_counts = Counter(zip(
             existing_df["model"],
             existing_df["question"],
             existing_df["context_length"].astype(str),
@@ -175,8 +176,14 @@ def run_eval(
         print(f"\n🚀 [{model_key}] {model_name} — RPM 限制: {rpm_limit}")
 
         for sample in tqdm(samples, desc=f"{model_key}", unit="req"):
-            key = (model_key, sample["question"], str(sample.get("context_length")), str(sample.get("depth_pct")))
-            if key in existing_keys:
+            key = (
+                model_key,
+                sample["question"],
+                str(sample.get("context_length")),
+                str(sample.get("depth_pct")),
+            )
+            if existing_counts[key] > 0:
+                existing_counts[key] -= 1
                 continue  # 跳过已计算的
 
             response, prompt_tokens, completion_tokens, cached_tokens, latency = call_model(
