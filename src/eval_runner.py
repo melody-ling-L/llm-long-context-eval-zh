@@ -100,15 +100,18 @@ def call_model(
             )
             elapsed = time.time() - t0
             text = response.choices[0].message.content.strip()
-            tokens = response.usage.total_tokens if response.usage else 0
-            return text, tokens, elapsed
+            usage = response.usage
+            prompt_tokens = usage.prompt_tokens if usage else 0
+            completion_tokens = usage.completion_tokens if usage else 0
+            cached_tokens = getattr(usage, "prompt_cache_hit_tokens", 0) or 0
+            return text, prompt_tokens, completion_tokens, cached_tokens, elapsed
 
         except Exception as e:
             print(f"  ⚠️  API 调用失败（尝试 {attempt + 1}/{retries}）: {e}")
             if attempt < retries - 1:
                 time.sleep(retry_wait)
 
-    return "", 0, 0.0
+    return "", 0, 0, 0, 0.0
 
 
 # ──────────────────────────────────────────────
@@ -150,9 +153,12 @@ def run_eval(
     existing_keys = set()
     if resume and out_path.exists():
         existing_df = pd.read_csv(out_path)
-        existing_keys = set(
-            zip(existing_df["model"], existing_df["question"], existing_df["depth_pct"].astype(str))
-        )
+        existing_keys = set(zip(
+            existing_df["model"],
+            existing_df["question"],
+            existing_df["context_length"].astype(str),
+            existing_df["depth_pct"].astype(str),
+        ))
         print(f"   已有 {len(existing_df)} 条结果，启用断点续跑")
 
     all_results = []
@@ -169,11 +175,11 @@ def run_eval(
         print(f"\n🚀 [{model_key}] {model_name} — RPM 限制: {rpm_limit}")
 
         for sample in tqdm(samples, desc=f"{model_key}", unit="req"):
-            key = (model_key, sample["question"], str(sample.get("depth_pct")))
+            key = (model_key, sample["question"], str(sample.get("context_length")), str(sample.get("depth_pct")))
             if key in existing_keys:
                 continue  # 跳过已计算的
 
-            response, tokens, latency = call_model(
+            response, prompt_tokens, completion_tokens, cached_tokens, latency = call_model(
                 client,
                 model_name,
                 sample["context"],
@@ -190,7 +196,10 @@ def run_eval(
                     "question": sample["question"],
                     "expected_answer": sample["answer"],
                     "model_response": response,
-                    "tokens_used": tokens,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "cached_tokens": cached_tokens,
+                    "tokens_used": prompt_tokens + completion_tokens,
                     "latency_s": round(latency, 2),
                 }
             )

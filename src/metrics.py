@@ -77,6 +77,39 @@ def score_results(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# 各模型单价（¥ / 1M tokens），区分 prompt / completion / cached
+_PRICE_TABLE = {
+    # (prompt, completion, cached)
+    "deepseek": (1.0,   2.0,  0.1),
+    "kimi":     (60.0, 60.0, 60.0),   # moonshot-v1-128k 实际价格
+    "qwen":     (4.0,   4.0,  4.0),   # qwen-long
+}
+
+
+def calc_cost(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    计算真实 API 费用，返回 per-model 汇总 DataFrame。
+    依赖列：model, prompt_tokens, completion_tokens, cached_tokens（可选）
+    """
+    rows = []
+    for model, sub in df.groupby("model"):
+        price = _PRICE_TABLE.get(model, (5.0, 5.0, 5.0))
+        pt = sub["prompt_tokens"].sum() if "prompt_tokens" in sub.columns else sub.get("tokens_used", pd.Series([0])).sum()
+        ct = sub["completion_tokens"].sum() if "completion_tokens" in sub.columns else 0
+        ckt = sub["cached_tokens"].sum() if "cached_tokens" in sub.columns else 0
+        # 非 cache 的 prompt tokens
+        non_cached_pt = pt - ckt
+        cost = (non_cached_pt * price[0] + ct * price[1] + ckt * price[2]) / 1e6
+        rows.append({
+            "model": model,
+            "prompt_tokens": int(pt),
+            "completion_tokens": int(ct),
+            "cached_tokens": int(ckt),
+            "cost_cny": round(cost, 4),
+        })
+    return pd.DataFrame(rows)
+
+
 # ──────────────────────────────────────────────
 # 聚合分析
 # ──────────────────────────────────────────────

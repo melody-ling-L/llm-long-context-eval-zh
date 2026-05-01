@@ -1,6 +1,28 @@
 # LLM 长上下文能力评测框架
 
+[![Lint](https://github.com/melody-ling-L/llm-long-context-eval-zh/actions/workflows/lint.yml/badge.svg)](https://github.com/melody-ling-L/llm-long-context-eval-zh/actions/workflows/lint.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > 设计 4 维度评测框架，量化验证 **"Lost in the Middle"** 现象在中文场景的表现
+
+---
+
+## 核心发现 / Key Findings
+
+![NIAH Heatmap - DeepSeek](notebooks/results/figures/niah_heatmap_deepseek.png)
+
+基于 **282 条样本**（3 模型 × 5 长度 × 7 深度 × 3 重复）的评测结果：
+
+- **Lost in the Middle 得到量化验证**：depth=25% 和 depth=90% 是三个模型的共同低谷，而文档开头（depth=10%）和结尾（depth=100%）准确率最高（Primacy/Recency Bias）
+- **Kimi 中间遗忘最严重**：depth=25% 时 Contains Accuracy 仅 69.2%，比开头低 23pp；8K 字符下跌至 50%，明显弱于另外两个模型
+- **Qwen EM 精度最高（80.9%）**，回答更简洁精准；**DeepSeek 响应最快**（均值 1.00s，比 Kimi 快 71%），综合性价比最优
+- **16K 出现意外反弹**（DeepSeek/Qwen 达 93.3%），32K 回落至 72%，长上下文能力呈非线性衰减
+
+| 模型 | EM Accuracy | Contains Accuracy | 平均延迟 |
+|------|:-----------:|:-----------------:|:-------:|
+| Qwen-Long | **80.9%** | **83.0%** | 1.07s |
+| DeepSeek-V3 | 68.1% | **83.0%** | **1.00s** |
+| Kimi (Moonshot) | 70.2% | 77.7% | 1.71s |
 
 ---
 
