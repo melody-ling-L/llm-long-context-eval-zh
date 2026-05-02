@@ -29,7 +29,8 @@ matplotlib.rcParams["font.sans-serif"] = [
 ]
 matplotlib.rcParams["axes.unicode_minus"] = False
 
-FIGURES_DIR = Path("results/figures")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+FIGURES_DIR = PROJECT_ROOT / "results/figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
 
