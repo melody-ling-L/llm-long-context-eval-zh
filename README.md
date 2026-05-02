@@ -2,27 +2,52 @@
 
 [![Lint](https://github.com/melody-ling-L/llm-long-context-eval-zh/actions/workflows/lint.yml/badge.svg)](https://github.com/melody-ling-L/llm-long-context-eval-zh/actions/workflows/lint.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Samples](https://img.shields.io/badge/samples-315-blue)](#最终结果--final-v1)
+[![Models](https://img.shields.io/badge/models-3-green)](#最终结果--final-v1)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](#最终结果--final-v1)
+[![Budget](https://img.shields.io/badge/budget-¥5~15%2Fmodel-orange)](#预算估算)
+[![Status](https://img.shields.io/badge/status-final_v1-success)](#最终结果--final-v1)
 
-> 设计 4 维度评测框架，量化验证 **"Lost in the Middle"** 现象在中文场景的表现
+> 面向中文长上下文场景的 NIAH / 位置偏差评测框架，用于验证 **"Lost in the Middle"** 是否稳定出现，以及不同模型是否真的能把长上下文用起来。
+>
+> 当前 README 展示的是 **final v1** 结果：已完成 **315 / 315** 条有效样本，覆盖率 **100%**。这版结论可以作为项目定稿发布；下一步优化重点不再是“补齐数据”，而是提升统计置信度和评测难度。
 
 ---
 
-## 核心发现 / Key Findings
+## 最终结果 / Final v1
 
-![NIAH Heatmap - DeepSeek](notebooks/results/figures/niah_heatmap_deepseek.png)
+| DeepSeek-V3 | Kimi | Qwen-Long |
+|---|---|---|
+| ![DeepSeek Heatmap](results/figures/niah_heatmap_deepseek.png) | ![Kimi Heatmap](results/figures/niah_heatmap_kimi.png) | ![Qwen Heatmap](results/figures/niah_heatmap_qwen.png) |
 
-基于 **282 条样本**（3 模型 × 5 长度 × 7 深度 × 3 重复）的评测结果：
+本轮完整评测共 **315 条有效样本**：3 个模型 × 5 个上下文长度 × 7 个深度点 × 3 次重复。每个模型在每个 `context_length × depth_pct` 格子中都恰好有 **3 次重复**，数据已经齐平。
 
-- **Lost in the Middle 得到量化验证**：depth=25% 和 depth=90% 是三个模型的共同低谷，而文档开头（depth=10%）和结尾（depth=100%）准确率最高（Primacy/Recency Bias）
-- **Kimi 中间遗忘最严重**：depth=25% 时 Contains Accuracy 仅 69.2%，比开头低 23pp；8K 字符下跌至 50%，明显弱于另外两个模型
-- **Qwen EM 精度最高（80.9%）**，回答更简洁精准；**DeepSeek 响应最快**（均值 1.00s，比 Kimi 快 71%），综合性价比最优
-- **16K 出现意外反弹**（DeepSeek/Qwen 达 93.3%），32K 回落至 72%，长上下文能力呈非线性衰减
+| 模型 | N | EM | Contains | Gap (Contains - EM) | 平均延迟 |
+|------|:--:|:--:|:--------:|:-------------------:|:-------:|
+| Qwen-Long | 105 | **80.0%** | **82.9%** | **2.9pp** | 1.10s |
+| DeepSeek-V3 | 105 | 64.8% | **82.9%** | 18.1pp | **1.01s** |
+| Kimi (Moonshot) | 105 | 65.7% | 76.2% | 10.5pp | 1.70s |
 
-| 模型 | EM Accuracy | Contains Accuracy | 平均延迟 |
-|------|:-----------:|:-----------------:|:-------:|
-| Qwen-Long | **80.9%** | **83.0%** | 1.07s |
-| DeepSeek-V3 | 68.1% | **83.0%** | **1.00s** |
-| Kimi (Moonshot) | 70.2% | 77.7% | 1.71s |
+### Key Findings
+
+- **位置偏差被完整复现，但形状更接近 W 型而不是标准 U 型。** 整体准确率在 depth=0% / 10% 时最高（91.1% / 86.7%），在 50% 处降到最低点（73.3%），75% 仍处低位（75.6%），随后在 90%-100% 回升到 80.0%。
+- **Qwen 的严格精度最高，DeepSeek 的综合效率最佳。** Qwen 的 EM 达到 80.0%，而 DeepSeek 用 1.01s 的平均延迟拿到了与 Qwen 持平的 Contains（82.9%）；如果业务更看重“答对且答得短”，Qwen 更稳，如果更看重吞吐与成本，DeepSeek 更实用。
+- **Kimi 在长上下文下退化最明显。** Kimi 的 Contains 只有 76.2%，且在 8K 与 32K 场景都掉到 66.7%，同时平均延迟 1.70s，是三者中最慢的一档。
+- **16K 是这一轮中文 NIAH 的共同峰值。** DeepSeek 与 Qwen 在 16K 都达到 95.2%，Kimi 也达到 90.5%；当窗口扩到 32K 后，三个模型都出现回落，说明“支持更长 context window”不等于“对更长上下文的稳定利用”。
+
+## 实验局限 / Limitations
+
+- 这版数据已经完整，但**每个格子仍只有 3 次重复**。它足以支撑 v1 的方向性结论，却不足以对局部异常点做强统计推断；下一版应把重复数提升到 `N >= 10`。
+- 当前结果呈现 **W 型 / 双低谷结构**，而不是英文文献中的标准 U 型。这可能反映中文长文本的注意力分布差异，也可能仍受小样本波动影响，需要更高重复数才能做稳健判断。
+- 这版 NIAH 的 needle 与 haystack 风格差异较大，模型可能部分依赖关键词检索，而不是真正的长程语义整合。下一版需要引入**风格对齐的 needle**和 **multi-key NIAH**，降低模式匹配带来的虚高准确率。
+- EM 与 Contains 的差值不只是“评分松紧差异”，它也在测量模型的**答案简洁度**。后续版本应把答案长度、输出 token 成本与两类准确率一起纳入分析，而不只盯着正确率本身。
+
+## V2 Roadmap
+
+1. 把单格重复数从 3 提升到 10，收窄置信区间，验证 16K / 32K 段是否真的存在反弹或塌陷。
+2. 引入风格对齐的 needle、真假难辨的数值 needle，以及 multi-key NIAH，降低关键词检索偏置。
+3. 增加答案长度、输出 token、单位正确率成本等指标，把“答对”与“答得省”分开看。
+4. 扩展多跳推理和跨领域文档，验证结论能否从 NIAH 泛化到更贴近真实业务的中文长文档场景。
 
 ---
 
@@ -102,6 +127,16 @@ notebooks/01_data_preparation.ipynb  →  构造数据集
 notebooks/02_eval_runner.ipynb       →  调用模型 API
 notebooks/03_analysis_visualization.ipynb  →  分析 + 可视化
 ```
+
+<details>
+<summary>如何复现当前 final v1 结果</summary>
+
+1. 运行 `notebooks/01_data_preparation.ipynb`，生成 `data/processed/niah_dataset.jsonl`。
+2. 运行 `notebooks/02_eval_runner.ipynb`，保持 `RESUME=True`，直到 `results/raw/raw_results.csv` 达到 315 条目标样本。
+3. 运行 `notebooks/03_analysis_visualization.ipynb`，确认 Step 1 输出 coverage = 100%，并生成 `results/figures/` 下的全部图表。
+4. 最后运行 `notebooks/04_report.ipynb`，导出最终报告 HTML。
+
+</details>
 
 ---
 
