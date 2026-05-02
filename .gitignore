@@ -26,10 +26,10 @@ data/raw/*.txt
 data/raw/*.md
 data/raw/*.pdf
 data/processed/*.jsonl
-results/raw/*.csv
+# results/raw/*.csv             # 允许提交最终原始结果，便于复现与 GitHub 展示
 results/raw/*.bak
-results/processed/*.csv
-results/figures/*.png
+# results/processed/*.csv       # 允许提交评分结果，便于复现分析结论
+# results/figures/*.png         # 允许提交静态图表，供 README 直接渲染
 results/figures/*.html
 
 # macOS
